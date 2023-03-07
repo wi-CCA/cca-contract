@@ -1,13 +1,13 @@
-# Sample Hardhat Project
+# WICCA Contract
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+Local Node
 
-Try running some of the following tasks:
+```bash
+$ dotenv -e .env.test -- npx hardhat node --network hardhat
+```
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
+Deploy
+
+```bash
+$ dotenv -e .env.test -- npx hardhat run scripts/deploy.js --network localhost
 ```
