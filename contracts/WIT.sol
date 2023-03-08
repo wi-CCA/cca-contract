@@ -112,7 +112,7 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
         }
     }
 
-    //====== actions ======//
+    //====== actions: TODO ======//
 
     function enroll(
         address to_,
