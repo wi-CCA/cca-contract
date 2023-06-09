@@ -37,6 +37,7 @@ contract WiccaIndexToken is
 
     struct Task {
         bool active;
+        address from;
         address to;
         uint256 amount;
         uint256 startBlock;
@@ -155,6 +156,7 @@ contract WiccaIndexToken is
     ) external {
         _tasks[_tasksId++] = Task({
             active: true,
+            from: msg.sender,
             to: to_,
             amount: amount_,
             startBlock: startBlock_,
@@ -234,7 +236,7 @@ contract WiccaIndexToken is
         for (uint256 i = 0; i < tids.length; ) {
             Task storage task = _tasks[tids[i]];
 
-            inputToken.transferFrom(msg.sender, address(this), task.amount);
+            inputToken.transferFrom(task.from, address(this), task.amount);
             _exchange(task.amount);
             _mint(task.to, task.amount); // TODO: yield bearing => share amount
 
@@ -266,6 +268,7 @@ contract WiccaIndexToken is
         uint256 amountOut
     ) internal {
         address[] memory path = new address[](2);
+        // TODO: path
         path[0] = fromToken_;
         path[1] = toToken_;
 
@@ -275,6 +278,6 @@ contract WiccaIndexToken is
             path,
             to_,
             type(uint256).max
-        ); // TODO
+        ); // TODO: swapExactTokensForTokens
     }
 }
