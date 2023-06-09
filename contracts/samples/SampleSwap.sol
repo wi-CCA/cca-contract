@@ -14,10 +14,12 @@ interface ITestERC20 {
     function balanceOf(address account) external view returns (uint256);
 }
 
-contract Swap {
+contract SampleSwap {
     IOracle internal _oracle;
 
-    constructor(address oracle_) {
+    constructor() {}
+
+    function setOracle(address oracle_) external {
         _oracle = IOracle(oracle_);
     }
 

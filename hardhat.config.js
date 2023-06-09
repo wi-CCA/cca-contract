@@ -21,7 +21,7 @@ module.exports = {
   // opera: process.env.SCAN_API_KEY,
   // }
   // },
-  defaultNetwork: 'localhost',
+  defaultNetwork: 'mumbai',
   networks: {
     hardhat: {
       forking: {
@@ -45,7 +45,7 @@ module.exports = {
       //   process.env.PRIVATE_KEY_FEE,
       // ],
     },
-    fantom: {
+    mumbai: {
       url: 'https://rpc.ankr.com/polygon_mumbai',
       accounts: [
         process.env.PRIVATE_KEY_OWNER,
