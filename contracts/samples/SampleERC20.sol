@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract TestERC20 is ERC20("Test ERC20", "TERC20") {
+contract SampleERC20 is ERC20("Sample ERC20", "TERC20") {
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }

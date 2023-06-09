@@ -3,5 +3,5 @@
 pragma solidity 0.8.9;
 
 interface IOracle {
-    function priceOf(address token) external returns (uint256 price);
+    function priceOf(address token) external view returns (uint256 price);
 }

@@ -9,34 +9,27 @@ contract WitFactory {
 
     address public treasury;
     address public swap;
-    address public action;
-    address public oracle;
 
-    constructor(
-        address treasury_,
-        address swap_,
-        address action_,
-        address oracle_
-    ) {
+    constructor(address treasury_, address swap_) {
         treasury = treasury_;
         swap = swap_;
-        action = action_;
-        oracle = oracle_;
     }
 
     function create(
         address inputToken_,
         address[] memory outputTokens_,
-        uint256[] memory weights_
+        uint256[] memory weights_,
+        address inputTokenPriceFeedAddress_,
+        address[] memory outputTokenPriceFeedAddress_
     ) external {
         WiccaIndexToken wit = new WiccaIndexToken(
             treasury,
             inputToken_,
             outputTokens_,
             weights_,
-            swap,
-            action,
-            oracle
+            inputTokenPriceFeedAddress_,
+            outputTokenPriceFeedAddress_,
+            swap
         );
 
         wits.push(address(wit));

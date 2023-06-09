@@ -3,15 +3,23 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../actions/contracts/interfaces/IActions.sol";
-import "./interfaces/IOracle.sol";
-import "./interfaces/ISwapRouter.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
+import "./interfaces/ISwapRouter.sol";
+import "./Oracle.sol";
+
+// TODO: IWIT
 // import "hardhat/console.sol";
 
-contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
+contract WiccaIndexToken is
+    Oracle,
+    AutomationCompatibleInterface,
+    ERC20("WICCA Index Token", "WIT")
+{
     // TODO: safeERC20
     // TODO: context
+
+    //============ Params ============//
 
     address public treasury; // feeTo
 
@@ -20,21 +28,43 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
     uint256[] public weights;
     uint256 public totalWeight;
 
-    uint256 internal _DECIMALS = 10000;
+    uint256 private constant _DECIMALS = 10000;
 
-    ISwapRouter public swap;
-    address public action;
-    IOracle public oracle;
+    ISwapRouter internal swap;
+
+    AggregatorV3Interface internal inputTokenPriceFeed;
+    AggregatorV3Interface[] internal outputTokenPriceFeeds;
+
+    struct Task {
+        bool active;
+        address to;
+        uint256 amount;
+        uint256 startBlock;
+        uint256 endBlock;
+        uint256 interval;
+        uint256 count;
+    }
+    uint256 private _tasksId;
+    mapping(uint256 => Task) internal _tasks;
+
+    //============ Initialize ============//
 
     constructor(
         address treasury_,
         address inputToken_,
         address[] memory outputTokens_,
         uint256[] memory weights_,
-        address swap_,
-        address action_,
-        address oracle_
-    ) {
+        address inputTokenPriceFeedAddress,
+        address[] memory outputTokenPriceFeedAddress,
+        address swap_
+    )
+        Oracle(
+            inputToken_,
+            outputTokens_,
+            inputTokenPriceFeedAddress,
+            outputTokenPriceFeedAddress
+        )
+    {
         require(
             outputTokens_.length == weights_.length,
             "WIT::constructor: input error."
@@ -46,6 +76,11 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
             outputTokens.push(IERC20(outputTokens_[i]));
             weights.push(weights_[i]);
             totalWeight += weights_[i];
+
+            outputTokenPriceFeeds.push(
+                AggregatorV3Interface(outputTokenPriceFeedAddress[i])
+            );
+
             unchecked {
                 i++;
             }
@@ -55,8 +90,7 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
 
         swap = ISwapRouter(swap_);
 
-        action = action_;
-        oracle = IOracle(oracle_);
+        inputTokenPriceFeed = AggregatorV3Interface(inputTokenPriceFeedAddress);
     }
 
     // function _getShares(uint256 inputAmount) internal returns (uint256 amount) {}
@@ -65,10 +99,8 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
 
     function deposit(address to_, uint256 amount_) external {
         inputToken.transferFrom(msg.sender, address(this), amount_);
-
         _exchange(amount_);
-
-        _mint(to_, amount_); // TODO: share amount
+        _mint(to_, amount_); // TODO: yield bearing => share amount
     }
 
     function withdraw(address to_, uint256 amount_) external {
@@ -112,17 +144,41 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
         }
     }
 
-    //====== actions: TODO ======//
+    //====== actions ======//
 
     function enroll(
         address to_,
         uint256 amount_,
-        uint256 startBlock,
-        uint256 endBlock,
-        uint256 interval
-    ) external {}
+        uint256 startBlock_,
+        uint256 endBlock_,
+        uint256 interval_
+    ) external {
+        _tasks[_tasksId++] = Task({
+            active: true,
+            to: to_,
+            amount: amount_,
+            startBlock: startBlock_,
+            endBlock: endBlock_,
+            interval: interval_,
+            count: 0
+        });
+    }
 
-    function cancel() external {}
+    function cancel(uint256 tid) external {
+        _tasks[tid].active = false;
+    }
+
+    //============ Automation ============//
+
+    // Example: 0-to-10:
+    // 0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a
+    /// @dev Pagination for multiple upkeeps.
+    function pagination(
+        uint256 lowerBound,
+        uint256 upperBound
+    ) external pure returns (bytes memory) {
+        return abi.encode(lowerBound, upperBound); // [lowerBound, upperBound)
+    }
 
     function checkUpkeep(
         bytes calldata checkData
@@ -131,19 +187,70 @@ contract WiccaIndexToken is ERC20("WICCA Index Token", "WIT"), IActions {
         view
         override
         returns (bool upkeepNeeded, bytes memory performData)
-    {}
+    {
+        (uint256 lowerBound, uint256 upperBound) = abi.decode(
+            checkData,
+            (uint256, uint256)
+        );
+
+        uint256 len;
+        uint256[] memory tids = new uint256[](upperBound - lowerBound);
+        uint256 blockNumber = block.number;
+
+        // check
+        for (uint256 i = lowerBound; i < upperBound; ) {
+            Task storage task = _tasks[i];
+
+            if (
+                (task.startBlock + task.count * task.interval <= blockNumber) &&
+                (task.endBlock > blockNumber)
+            ) {
+                tids[len] = i;
+                unchecked {
+                    ++len;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+
+        // return
+        if (len > 0) {
+            // resize memory
+            assembly {
+                mstore(tids, len)
+            }
+            upkeepNeeded = true;
+            performData = abi.encode(tids);
+        }
+    }
 
     function performUpkeep(bytes calldata performData) external override {
-        // checkUpkeep()
+        // checkUpkeep() // TODO
+
+        uint256[] memory tids = abi.decode(performData, (uint256[]));
+
+        for (uint256 i = 0; i < tids.length; ) {
+            Task storage task = _tasks[tids[i]];
+
+            inputToken.transferFrom(msg.sender, address(this), task.amount);
+            _exchange(task.amount);
+            _mint(task.to, task.amount); // TODO: yield bearing => share amount
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     //====== utils ======//
 
-    function _allPrice() internal returns (uint256[] memory) {
+    function _allPrice() internal view returns (uint256[] memory) {
         uint256[] memory _prices = new uint256[](outputTokens.length);
 
         for (uint256 i; i < outputTokens.length; ) {
-            _prices[i] = oracle.priceOf(address(outputTokens[i]));
+            _prices[i] = priceOf(address(outputTokens[i]));
             unchecked {
                 i++;
             }

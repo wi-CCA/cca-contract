@@ -16,17 +16,17 @@ module.exports = {
   paths: {
     sources: './contracts',
   },
-  etherscan: {
-    apiKey: {
-      opera: process.env.FTMSCAN_API_KEY,
-    }
-  },
+  // etherscan: {
+  // apiKey: {
+  // opera: process.env.SCAN_API_KEY,
+  // }
+  // },
   defaultNetwork: 'localhost',
   networks: {
     hardhat: {
       forking: {
         enabled: true,
-        url: 'https://rpc.fantom.network',
+        url: 'https://rpc.ankr.com/polygon_mumbai',
         // blockNumber: 24243078,
         accounts: [
           process.env.PRIVATE_KEY_OWNER,
@@ -46,7 +46,7 @@ module.exports = {
       // ],
     },
     fantom: {
-      url: 'https://rpc.ankr.com/fantom',
+      url: 'https://rpc.ankr.com/polygon_mumbai',
       accounts: [
         process.env.PRIVATE_KEY_OWNER,
         process.env.PRIVATE_KEY_USER_1,

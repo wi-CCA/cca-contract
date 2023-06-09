@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import "../interfaces/IOracle.sol";
 
-contract Oracle is IOracle {
+contract SampleOracle is IOracle {
     address[] public tokens;
     uint256[] public prices;
 
@@ -18,7 +18,7 @@ contract Oracle is IOracle {
         }
     }
 
-    function priceOf(address token) external returns (uint256 price) {
+    function priceOf(address token) external view returns (uint256 price) {
         for (uint256 i; i < tokens.length; ) {
             if (tokens[i] == token) {
                 return prices[i];

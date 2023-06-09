@@ -28,6 +28,12 @@ contract Swap {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts) {
+        // to avoid warnings
+        amountInMax;
+        to;
+        deadline;
+        amounts;
+
         ITestERC20(path[0]).burn(
             msg.sender,
             (amountOut * 10 ** 18) / _oracle.priceOf(path[0])
